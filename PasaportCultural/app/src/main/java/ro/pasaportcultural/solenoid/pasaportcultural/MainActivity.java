@@ -15,6 +15,7 @@ import android.support.v4.content.FileProvider;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -33,13 +34,12 @@ import java.util.Date;
 public class MainActivity extends AppCompatActivity {
 
     private static final int REQUEST_LOAD_PHOTO = 1;
-    private static final int REQUEST_TAKE_PHOTO = 2;
+    private static final int PIC_CROP = 2;
     private Button mButton;
-    private Button tButton;
     private ImageView mImage;
-    private int share=0;
+    private int share = 0;
     private Bitmap shareable;
-    private String CurrentPhotoPath;
+    private Bitmap selectedImage = null;
 
     private BottomNavigationView.OnNavigationItemSelectedListener mOnNavigationItemSelectedListener
             = new BottomNavigationView.OnNavigationItemSelectedListener() {
@@ -49,17 +49,14 @@ public class MainActivity extends AppCompatActivity {
             switch (item.getItemId()) {
                 case R.id.navigation_home:
                     mButton.setVisibility(View.VISIBLE);
-                    tButton.setVisibility(View.VISIBLE);
                     mImage.setVisibility(View.VISIBLE);
                     return true;
                 case R.id.navigation_dashboard:
                     mButton.setVisibility(View.INVISIBLE);
-                    tButton.setVisibility(View.INVISIBLE);
                     mImage.setVisibility(View.INVISIBLE);
                     return true;
                 case R.id.navigation_notifications:
                     mButton.setVisibility(View.INVISIBLE);
-                    tButton.setVisibility(View.INVISIBLE);
                     mImage.setVisibility(View.INVISIBLE);
                     return true;
             }
@@ -80,97 +77,48 @@ public class MainActivity extends AppCompatActivity {
         mButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 // Code here executes on main thread after user presses button
-                if(share==1)
-                {
-                    String bitmapPath = MediaStore.Images.Media.insertImage(getContentResolver(), shareable,"title", null);
-                    Uri bitmapUri = Uri.parse(bitmapPath);
-                    Intent sendIntent = new Intent();
-                    sendIntent.setAction(Intent.ACTION_SEND);
-                    sendIntent.putExtra(Intent.EXTRA_STREAM, bitmapUri);
-                    sendIntent.setType("text/plain");
-                    startActivity(sendIntent);
-                    mButton.setText("Alege o poza");
-                    share=0;
-                }
-                else {
-                    Intent photoPickerIntent = new Intent(Intent.ACTION_PICK);
-                    photoPickerIntent.setType("image/*");
-                    startActivityForResult(photoPickerIntent, REQUEST_LOAD_PHOTO);
-                    mButton.setText("Trimite poza");
-                    share = 1;
-                }
-            }
-        });
-
-        tButton = (Button) findViewById(R.id.button_take);
-        tButton.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                // Code here executes on main thread after user presses button
                 if (share == 1) {
-                    mButton.setText("Alege o poza");
-                    share = 0;
+                    dispatchShare();
                 } else {
-                    /*
-                    Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-                    if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
-                        startActivityForResult(takePictureIntent, 2);
-                        */
-                    dispatchTakePictureIntent();
-                    mButton.setText("Alege alta poza");
                     share = 1;
+                    dispatchLoadPhoto();
                 }
             }
         });
 
         mImage = (ImageView) findViewById(R.id.image_view);
+        mImage.setOnTouchListener(new View.OnTouchListener() {
+            public boolean onTouch(View v, MotionEvent event) {
+                Toast.makeText(MainActivity.this, "You touched the ImageView", Toast.LENGTH_LONG).show();
+                final Bitmap overlay = BitmapFactory.decodeResource(getApplicationContext().getResources(),
+                        R.mipmap.ic_stampx);
+
+                Bitmap bg = Bitmap.createBitmap(selectedImage.getWidth(), selectedImage.getHeight(), selectedImage.getConfig());
+                Canvas canvas = new Canvas(bg);
+                canvas.drawBitmap(selectedImage, new Matrix(), null);
+                int minDimension = Math.min(selectedImage.getWidth(), selectedImage.getHeight()) / 3;
+                canvas.drawBitmap(overlay, null, new Rect((int) event.getX(), (int) event.getY(), (int) event.getX() + minDimension, (int) event.getY() + minDimension), null);
+
+                mImage.setImageBitmap(bg);
+                return true;
+            }
+        });
     }
 
     protected void onActivityResult(int reqCode, int resultCode, Intent data) {
         super.onActivityResult(reqCode, resultCode, data);
 
         if (reqCode == REQUEST_LOAD_PHOTO) {
-            try {
-                final Uri imageUri = data.getData();
-                final InputStream imageStream = getContentResolver().openInputStream(imageUri);
-                final Bitmap selectedImage = BitmapFactory.decodeStream(imageStream);
-                final Bitmap overlay = BitmapFactory.decodeResource(this.getResources(),
-                        R.mipmap.ic_stampx);
-
-                Bitmap bg = Bitmap.createBitmap(selectedImage.getWidth(), selectedImage.getHeight(), selectedImage.getConfig());
-                Canvas canvas = new Canvas(bg);
-                canvas.drawBitmap(selectedImage, new Matrix(), null);
-                canvas.drawBitmap(overlay, null, new Rect(0,0,500,500), null);
-
-                mImage.setImageBitmap(bg);
-                saveImageToExternalStorage(bg);
-                shareable=bg;
-
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-                Toast.makeText(MainActivity.this, "Something went wrong", Toast.LENGTH_LONG).show();
+            if (data != null) {
+                dispatchCrop(data);
+                mButton.setText("Trimite poza");
             }
-
-        }else if (reqCode == REQUEST_TAKE_PHOTO){
-            /*
-            Bitmap selectedImage = (Bitmap) data.getExtras().get("data");
-             */
-            Bitmap selectedImage = null;
-            try {
-                selectedImage = MediaStore.Images.Media.getBitmap(this.getContentResolver(), Uri.fromFile(new File(CurrentPhotoPath)));
-            } catch (IOException e) {
-                e.printStackTrace();
+            else {
+                mButton.setText("Alege o poza");
+                share = 0;
             }
-            final Bitmap overlay = BitmapFactory.decodeResource(this.getResources(),
-                    R.mipmap.ic_stampx);
-
-            Bitmap bg = Bitmap.createBitmap(selectedImage.getWidth(), selectedImage.getHeight(), selectedImage.getConfig());
-            Canvas canvas = new Canvas(bg);
-            canvas.drawBitmap(selectedImage, new Matrix(), null);
-            canvas.drawBitmap(overlay, null, new Rect(0,0,1000,1000), null);
-
-            mImage.setImageBitmap(bg);
-            saveImageToExternalStorage(bg);
-            shareable=bg;
+        } else {
+            dispatchPhotoRetrieval(data);
         }
     }
 
@@ -183,7 +131,7 @@ public class MainActivity extends AppCompatActivity {
             }
 
             OutputStream fOut = null;
-            File file = new File(fullPath, "Image"+ DateFormat.getDateTimeInstance().format(new Date())+".png");
+            File file = new File(fullPath, "Image" + DateFormat.getDateTimeInstance().format(new Date()) + ".png");
             file.createNewFile();
             fOut = new FileOutputStream(file);
 
@@ -201,37 +149,62 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private File createImageFile() throws IOException {
-        // Create an image file name
-        String imageFileName = "transit";
-        File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
-        File image = new File(storageDir, imageFileName);
-
-        // Save a file: path for use with ACTION_VIEW intents
-        CurrentPhotoPath = image.getAbsolutePath();
-        return image;
-    }
-
-    private void dispatchTakePictureIntent() {
-        Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        // Ensure that there's a camera activity to handle the intent
-        if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
-            // Create the File where the photo should go
-            File photoFile = null;
-            try {
-                photoFile = createImageFile();
-            } catch (IOException ex) {
-                // Error occurred while creating the File
-            }
-            // Continue only if the File was successfully created
-            if (photoFile != null) {
-                Uri photoURI = FileProvider.getUriForFile(this,
-                        "ro.pasaportcultural.solenoid.fileprovider",
-                        photoFile);
-                takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI);
-                startActivityForResult(takePictureIntent, REQUEST_TAKE_PHOTO);
-            }
+    public void dispatchCrop(Intent data) {
+        if(data != null) {
+            //call the standard crop action intent (the user device may not support it)
+            Intent cropIntent = new Intent("com.android.camera.action.CROP");
+            //indicate image type and Uri
+            cropIntent.setDataAndType(data.getData(), "image/*");
+            //set crop properties
+            cropIntent.putExtra("crop", "true");
+            //retrieve data on return
+            cropIntent.putExtra("return-data", true);
+            //start the activity - we handle returning in onActivityResult
+            startActivityForResult(cropIntent, PIC_CROP);
         }
     }
 
+    public void dispatchPhotoRetrieval(Intent data) {
+        try {
+            final Uri imageUri = data.getData();
+            final InputStream imageStream = getApplicationContext().getContentResolver().openInputStream(imageUri);
+            selectedImage = BitmapFactory.decodeStream(imageStream);
+            final Bitmap overlay = BitmapFactory.decodeResource(this.getResources(),
+                    R.mipmap.ic_stampx);
+
+            Bitmap bg = Bitmap.createBitmap(selectedImage.getWidth(), selectedImage.getHeight(), selectedImage.getConfig());
+            Canvas canvas = new Canvas(bg);
+            canvas.drawBitmap(selectedImage, new Matrix(), null);
+            int minDimension = Math.min(selectedImage.getWidth(), selectedImage.getHeight()) / 3;
+            canvas.drawBitmap(overlay, null, new Rect(0, 0, minDimension, minDimension), null);
+
+            mImage.setImageBitmap(bg);
+            saveImageToExternalStorage(bg);
+            shareable = bg;
+
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+            Toast.makeText(MainActivity.this, "Something went wrong", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    public void dispatchShare() {
+        String bitmapPath = MediaStore.Images.Media.insertImage(getContentResolver(), shareable, "title", null);
+        if(bitmapPath != null) {
+            Uri bitmapUri = Uri.parse(bitmapPath);
+            Intent sendIntent = new Intent();
+            sendIntent.setAction(Intent.ACTION_SEND);
+            sendIntent.putExtra(Intent.EXTRA_STREAM, bitmapUri);
+            sendIntent.setType("text/plain");
+            startActivity(sendIntent);
+        }
+        mButton.setText("Alege o poza");
+        share = 0;
+    }
+
+    public void dispatchLoadPhoto() {
+        Intent photoPickerIntent = new Intent(Intent.ACTION_PICK);
+        photoPickerIntent.setType("image/*");
+        startActivityForResult(photoPickerIntent, REQUEST_LOAD_PHOTO);
+    }
 }
