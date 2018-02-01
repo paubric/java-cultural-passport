@@ -21,7 +21,8 @@
             android:layout_height="wrap_content"
             android:layout_margin="60dp"
             app:srcCompat="@drawable/ic_photo"
-            android:clickable="true" />
+            android:clickable="true"
+            android:scaleType="fitCenter"/>
         <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
