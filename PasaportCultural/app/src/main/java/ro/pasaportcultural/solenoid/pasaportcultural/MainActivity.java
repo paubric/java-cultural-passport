@@ -36,6 +36,7 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_LOAD_PHOTO = 1;
     private static final int PIC_CROP = 2;
     private Button mButton;
+    private Button saveButton;
     private ImageView mImage;
     private int share = 0;
     private Bitmap shareable;
@@ -82,6 +83,7 @@ public class MainActivity extends AppCompatActivity {
                 } else {
                     share = 1;
                     dispatchLoadPhoto();
+
                 }
             }
         });
@@ -89,9 +91,8 @@ public class MainActivity extends AppCompatActivity {
         mImage = (ImageView) findViewById(R.id.image_view);
         mImage.setOnTouchListener(new View.OnTouchListener() {
             public boolean onTouch(View v, MotionEvent event) {
-                Toast.makeText(MainActivity.this, "You touched the ImageView", Toast.LENGTH_LONG).show();
                 final Bitmap overlay = BitmapFactory.decodeResource(getApplicationContext().getResources(),
-                        R.mipmap.ic_stampx);
+                        R.mipmap.ic_pc);
 
                 Bitmap bg = Bitmap.createBitmap(selectedImage.getWidth(), selectedImage.getHeight(), selectedImage.getConfig());
                 Canvas canvas = new Canvas(bg);
@@ -99,8 +100,17 @@ public class MainActivity extends AppCompatActivity {
                 int minDimension = Math.min(selectedImage.getWidth(), selectedImage.getHeight()) / 3;
                 canvas.drawBitmap(overlay, null, new Rect((int) event.getX(), (int) event.getY(), (int) event.getX() + minDimension, (int) event.getY() + minDimension), null);
 
+                shareable = bg;
                 mImage.setImageBitmap(bg);
                 return true;
+            }
+        });
+
+        saveButton = (Button) findViewById(R.id.button_save);
+        saveButton.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                // Code here executes on main thread after user presses button
+                saveImageToExternalStorage(shareable);
             }
         });
     }
@@ -170,7 +180,7 @@ public class MainActivity extends AppCompatActivity {
             final InputStream imageStream = getApplicationContext().getContentResolver().openInputStream(imageUri);
             selectedImage = BitmapFactory.decodeStream(imageStream);
             final Bitmap overlay = BitmapFactory.decodeResource(this.getResources(),
-                    R.mipmap.ic_stampx);
+                    R.mipmap.ic_pc);
 
             Bitmap bg = Bitmap.createBitmap(selectedImage.getWidth(), selectedImage.getHeight(), selectedImage.getConfig());
             Canvas canvas = new Canvas(bg);
@@ -179,8 +189,8 @@ public class MainActivity extends AppCompatActivity {
             canvas.drawBitmap(overlay, null, new Rect(0, 0, minDimension, minDimension), null);
 
             mImage.setImageBitmap(bg);
-            saveImageToExternalStorage(bg);
             shareable = bg;
+            saveButton.setEnabled(true);
 
         } catch (FileNotFoundException e) {
             e.printStackTrace();

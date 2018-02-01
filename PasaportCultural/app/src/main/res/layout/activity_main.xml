@@ -28,8 +28,16 @@
             android:paddingLeft="16dp"
             android:paddingRight="16dp"
             android:layout_gravity="bottom"
-            android:orientation="horizontal"
+            android:orientation="vertical"
             android:weightSum="2">
+        <Button
+            android:id="@+id/button_save"
+            android:layout_height="wrap_content"
+            android:layout_width="match_parent"
+            android:layout_weight="1"
+            android:text="Salveaza poza"
+            android:enabled="false"
+            android:layout_gravity="center|bottom" />
         <Button
             android:id="@+id/button_add"
             android:layout_height="wrap_content"
