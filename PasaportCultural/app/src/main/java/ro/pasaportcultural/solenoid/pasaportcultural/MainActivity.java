@@ -36,6 +36,8 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
+import ro.pasaportcultural.solenoid.pasaportcultural.GalleryActivity;
+
 public class MainActivity extends AppCompatActivity {
 
     private static final int REQUEST_LOAD_PHOTO = 1;
@@ -43,42 +45,19 @@ public class MainActivity extends AppCompatActivity {
     private Button mButton;
     private Button saveButton;
     private ImageView mImage;
+    private ImageView albumImage;
     private int share = 0;
     private Bitmap shareable;
     private Bitmap selectedImage = null;
     private String descriptionText = "";
 
-    private BottomNavigationView.OnNavigationItemSelectedListener mOnNavigationItemSelectedListener
-            = new BottomNavigationView.OnNavigationItemSelectedListener() {
 
-        @Override
-        public boolean onNavigationItemSelected(@NonNull MenuItem item) {
-            switch (item.getItemId()) {
-                case R.id.navigation_home:
-                    mButton.setVisibility(View.VISIBLE);
-                    mImage.setVisibility(View.VISIBLE);
-                    return true;
-                case R.id.navigation_dashboard:
-                    mButton.setVisibility(View.INVISIBLE);
-                    mImage.setVisibility(View.INVISIBLE);
-                    return true;
-                case R.id.navigation_notifications:
-                    mButton.setVisibility(View.INVISIBLE);
-                    mImage.setVisibility(View.INVISIBLE);
-                    return true;
-            }
-            return false;
-        }
-
-    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        BottomNavigationView navigation = (BottomNavigationView) findViewById(R.id.navigation);
-        navigation.setOnNavigationItemSelectedListener(mOnNavigationItemSelectedListener);
 
         mButton = (Button) findViewById(R.id.button_add);
         mButton.setOnClickListener(new View.OnClickListener() {
@@ -119,6 +98,15 @@ public class MainActivity extends AppCompatActivity {
                 saveImageToExternalStorage(shareable);
             }
         });
+
+        albumImage = (ImageView) findViewById(R.id.image_album);
+        albumImage.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                // Code here executes on main thread after user presses button
+                Intent intent = new Intent(MainActivity.this, GalleryActivity.class);
+                startActivity(intent);
+            }
+        });
     }
 
     protected void onActivityResult(int reqCode, int resultCode, Intent data) {
@@ -134,7 +122,11 @@ public class MainActivity extends AppCompatActivity {
                 share = 0;
             }
         } else {
-            dispatchPhotoRetrieval(data);
+            try {
+                dispatchPhotoRetrieval(data);
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -185,8 +177,8 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    public void dispatchPhotoRetrieval(Intent data) {
-        try {
+    public void dispatchPhotoRetrieval(Intent data) throws FileNotFoundException {
+        if (data != null) {
             final Uri imageUri = data.getData();
             final InputStream imageStream = getApplicationContext().getContentResolver().openInputStream(imageUri);
             selectedImage = BitmapFactory.decodeStream(imageStream);
@@ -201,11 +193,8 @@ public class MainActivity extends AppCompatActivity {
 
             mImage.setImageBitmap(bg);
             shareable = bg;
-            saveButton.setEnabled(true);
+            saveButton.setVisibility(View.VISIBLE);
 
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-            Toast.makeText(MainActivity.this, "Something went wrong", Toast.LENGTH_LONG).show();
         }
     }
 
